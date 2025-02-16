@@ -28,11 +28,12 @@ local Window = Rayfield:CreateWindow({
 
 -- Crear pestañas
 local MainTab = Window:CreateTab("Main", 4483362458)
-local AvatarTab = Window:CreateTab("Avatar", 7072706623) -- Nueva pestaña "Avatar"
+local AvatarTab = Window:CreateTab("Avatar", 7072706623) -- Pestaña "Avatar"
+local TeleportsTab = Window:CreateTab("Teleports 📋", 1234567890) -- Nueva pestaña "Teleports 📋" (usa el id de icono que prefieras)
 
 -- Crear secciones
 local MainSection = MainTab:CreateSection("Interactable")
-local AvatarSection = AvatarTab:CreateSection("Character Settings") -- Sección en Avatar
+local AvatarSection = AvatarTab:CreateSection("Character Settings")
 
 -- Botón para recoger herramientas
 MainTab:CreateButton({
@@ -186,5 +187,46 @@ AvatarTab:CreateButton({
                 end
             end
         end)
+    end
+})
+
+-- Botón en la pestaña Teleports 📋 para teletransportar al jugador al modelo "Da Metaverse Portal"
+TeleportsTab:CreateButton({
+    Name = "Tp to Da Metaverse Portal",
+    Callback = function()
+        local modelName = "Da Metaverse Portal"
+        local model = game.Workspace:FindFirstChild(modelName)
+        if model and model:IsA("Model") then
+            local portalPosition = model:GetPivot().Position + model:GetPivot().LookVector * 10 -- Mueve 10 pasos adelante
+            local player = game.Players.LocalPlayer
+            if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.CFrame = CFrame.new(portalPosition)
+                print("Jugador teletransportado exitosamente al portal, 10 pasos adelante.")
+            else
+                print("No se encontró al jugador o su HumanoidRootPart.")
+            end
+        else
+            print("Modelo no encontrado en el Workspace.")
+        end
+    end
+})
+
+-- Botón en la pestaña Teleports 📋 para teletransportar al jugador al objeto "Statue" en el Workspace
+TeleportsTab:CreateButton({
+    Name = "Tp to Statue",
+    Callback = function()
+        local statue = game.Workspace:FindFirstChild("Statue")
+        if statue and statue:IsA("Model") then
+            local statuePosition = statue:GetPivot().Position
+            local player = game.Players.LocalPlayer
+            if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.CFrame = CFrame.new(statuePosition)
+                print("Jugador teletransportado exitosamente a la estatua.")
+            else
+                print("No se encontró al jugador o su HumanoidRootPart.")
+            end
+        else
+            print("Estatua no encontrada en el Workspace.")
+        end
     end
 })
