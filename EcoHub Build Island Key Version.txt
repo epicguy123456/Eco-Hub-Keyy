@@ -28,12 +28,11 @@ local Window = Rayfield:CreateWindow({
 
 -- Crear pestañas
 local MainTab = Window:CreateTab("Main", 4483362458)
-local AvatarTab = Window:CreateTab("Avatar", 7072706623) -- Pestaña "Avatar"
-local TeleportsTab = Window:CreateTab("Teleports 📋", 1234567890) -- Nueva pestaña "Teleports 📋" (usa el id de icono que prefieras)
+local AvatarTab = Window:CreateTab("Avatar", 7072706623) -- Nueva pestaña "Avatar"
 
 -- Crear secciones
 local MainSection = MainTab:CreateSection("Interactable")
-local AvatarSection = AvatarTab:CreateSection("Character Settings")
+local AvatarSection = AvatarTab:CreateSection("Character Settings") -- Sección en Avatar
 
 -- Botón para recoger herramientas
 MainTab:CreateButton({
@@ -190,43 +189,77 @@ AvatarTab:CreateButton({
     end
 })
 
--- Botón en la pestaña Teleports 📋 para teletransportar al jugador al modelo "Da Metaverse Portal"
-TeleportsTab:CreateButton({
-    Name = "Tp to Da Metaverse Portal",
-    Callback = function()
-        local modelName = "Da Metaverse Portal"
-        local model = game.Workspace:FindFirstChild(modelName)
-        if model and model:IsA("Model") then
-            local portalPosition = model:GetPivot().Position + model:GetPivot().LookVector * 10 -- Mueve 10 pasos adelante
-            local player = game.Players.LocalPlayer
-            if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                player.Character.HumanoidRootPart.CFrame = CFrame.new(portalPosition)
-                print("Jugador teletransportado exitosamente al portal, 10 pasos adelante.")
-            else
-                print("No se encontró al jugador o su HumanoidRootPart.")
-            end
-        else
-            print("Modelo no encontrado en el Workspace.")
-        end
+-----------------------------------------------------
+-- Teleport Tab
+
+local TeleportsTab = Window:CreateTab("🏃‍♂️Teleports", nil)
+local Section = TeleportsTab:CreateSection("Places", true)
+
+local lastPosition = nil
+
+local function savePosition()
+    local Player = game.Players.LocalPlayer
+    if Player and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+        lastPosition = Player.Character.HumanoidRootPart.CFrame
     end
+end
+
+local function teleportTo(position)
+    local Player = game.Players.LocalPlayer
+    if Player and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+        savePosition()
+        Player.Character.HumanoidRootPart.CFrame = CFrame.new(position)
+    end
+end
+
+TeleportsTab:CreateButton({
+   Name = "Teleport to Portal",
+   Info = "Teleports you to the portal.",
+   Interact = 'UnChangable',
+   Callback = function()
+        teleportTo(Vector3.new(-292, 48, 200))
+   end,
 })
 
--- Botón en la pestaña Teleports 📋 para teletransportar al jugador al objeto "Statue" en el Workspace
 TeleportsTab:CreateButton({
-    Name = "Tp to Statue",
-    Callback = function()
-        local statue = game.Workspace:FindFirstChild("Statue")
-        if statue and statue:IsA("Model") then
-            local statuePosition = statue:GetPivot().Position
-            local player = game.Players.LocalPlayer
-            if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                player.Character.HumanoidRootPart.CFrame = CFrame.new(statuePosition)
-                print("Jugador teletransportado exitosamente a la estatua.")
-            else
-                print("No se encontró al jugador o su HumanoidRootPart.")
+   Name = "Teleport to Statue",
+   Info = "Teleports you to the statue.",
+   Interact = 'UnChangable',
+   Callback = function()
+        teleportTo(Vector3.new(-212, 48, 428))
+   end,
+})
+
+TeleportsTab:CreateButton({
+   Name = "Teleport to Nuke",
+   Info = "Teleports you to the nuke.",
+   Interact = 'UnChangable',
+   Callback = function()
+        teleportTo(Vector3.new(56, 48, 196))
+   end,
+})
+
+TeleportsTab:CreateButton({
+   Name = "Teleport to GrassMap",
+   Info = "Teleports you to the GrassMap.",
+   Interact = 'UnChangable',
+   Callback = function()
+        teleportTo(Vector3.new(-128, 48, 188))
+   end,
+})
+
+local BackSection = TeleportsTab:CreateSection("Return", true)
+
+TeleportsTab:CreateButton({
+   Name = "Teleport Back",
+   Info = "Returns you to your last saved location.",
+   Interact = 'UnChangable',
+   Callback = function()
+        if lastPosition then
+            local Player = game.Players.LocalPlayer
+            if Player and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                Player.Character.HumanoidRootPart.CFrame = lastPosition
             end
-        else
-            print("Estatua no encontrada en el Workspace.")
         end
-    end
+   end,
 })
