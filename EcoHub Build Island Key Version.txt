@@ -36,7 +36,7 @@ local Section = MainTab:CreateSection("Interactable")
 MainTab:CreateButton({
     Name = "Get All Tools",
     Callback = function()
-        loadstring([[
+        loadstring([[ 
             local player = game.Players.LocalPlayer
             local character = player.Character or player.CharacterAdded:Wait()
             local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
@@ -93,5 +93,29 @@ MainTab:CreateButton({
             game:GetService("ReplicatedStorage").WalletRemotes.DropCash:FireServer(unpack(args))
             wait(0.1)
         end
+    end
+})
+
+-- 🔹 **Nuevo botón: Equipar todas las herramientas del inventario**
+MainTab:CreateButton({
+    Name = "Equip All Tools",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local backpack = player:FindFirstChild("Backpack")
+        local character = player.Character or player.CharacterAdded:Wait()
+
+        if not backpack or not character then
+            warn("Error: No se encontró el Backpack o el Character.")
+            return
+        end
+
+        -- Mover todas las herramientas del Backpack al Character
+        for _, tool in pairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                tool.Parent = character
+            end
+        end
+
+        print("Todas las herramientas han sido equipadas.")
     end
 })
