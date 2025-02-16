@@ -1,0 +1,97 @@
+-- Carga la librería de UI (Rayfield en este caso)
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- Crear la ventana de UI con sistema de key habilitado
+local Window = Rayfield:CreateWindow({
+    Name = "Eco Hub",
+    LoadingTitle = "Cargando...",
+    LoadingSubtitle = "Por favor espera",
+    ConfigurationSaving = {
+        Enabled = false,
+        FolderName = nil,
+        FileName = "EcoHubConfig"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "",
+        RememberJoins = true
+    },
+    KeySystem = true, -- Activado el sistema de key
+    KeySettings = {
+        Title = "Ingrese la clave",
+        Subtitle = "Clave necesaria para acceder",
+        Note = "Ingrese la clave que se le proporcionó",
+        SaveKey = true,
+        Key = "ecohub" -- Clave establecida en "ecohub"
+    }
+})
+
+-- Crear una pestaña principal
+local MainTab = Window:CreateTab("Main", 4483362458)
+
+-- Crear una sección de botones
+local Section = MainTab:CreateSection("Interactable")
+
+-- Botón para ejecutar el script de recoger herramientas
+MainTab:CreateButton({
+    Name = "Get All Tools",
+    Callback = function()
+        loadstring([[
+            local player = game.Players.LocalPlayer
+            local character = player.Character or player.CharacterAdded:Wait()
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            local backpack = player:FindFirstChild("Backpack")
+            
+            if not humanoidRootPart or not backpack then
+                warn("Error: No se encontró el HumanoidRootPart o el Backpack.")
+                return
+            end
+            
+            local posOriginal = humanoidRootPart.CFrame
+            local itemsRecolectados = 0
+            
+            local function recogerItems()
+                for _, objeto in pairs(game.Workspace:GetDescendants()) do
+                    if objeto.Name == "SwordGiver" or objeto.Name == "GearGiver" or objeto.Name == "Giver" then
+                        if objeto.Parent:FindFirstChildOfClass("Part") then
+                            humanoidRootPart.CFrame = objeto.Parent:FindFirstChildOfClass("Part").CFrame + Vector3.new(0,1,0)
+                            wait(0.1)
+                            itemsRecolectados = itemsRecolectados + 1
+                        end
+                    end
+                end
+            end
+            
+            recogerItems()
+            
+            humanoidRootPart.CFrame = posOriginal
+            print("Proceso completado. Ítems recogidos: " .. itemsRecolectados)
+        ]])()
+    end
+})
+
+-- Botón para Purple Hollow (Progears Imported)
+MainTab:CreateButton({
+    Name = "Purple Hollow (Progears Imported)",
+    Callback = function()
+        local args = {
+            [1] = 16,
+            [2] = 50
+        }
+        game:GetService("ReplicatedStorage").Purple:FireServer(unpack(args))
+    end
+})
+
+-- Botón para Drop Cash X100 (Wallet in hand)
+MainTab:CreateButton({
+    Name = "Drop Cash X100 (Wallet in hand)",
+    Callback = function()
+        for i = 1, 100 do
+            local args = {
+                [1] = 1 -- Drop $1
+            }
+            game:GetService("ReplicatedStorage").WalletRemotes.DropCash:FireServer(unpack(args))
+            wait(0.1)
+        end
+    end
+})
