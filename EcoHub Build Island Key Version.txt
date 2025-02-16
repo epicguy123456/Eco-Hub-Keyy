@@ -263,3 +263,57 @@ TeleportsTab:CreateButton({
         end
    end,
 })
+
+-----------------------------------------------------
+-- Nueva pestaña Rank 4+ añadida al hub original
+
+local RankTab = Window:CreateTab("Rank 4+", nil)
+local RankSection = RankTab:CreateSection("Rank 4+")
+
+RankTab:CreateButton({
+    Name = "REVOLUTION!",
+    Callback = function()
+        local otherIssue = "DefaultTeam"
+        local skillIssue = "maroon"
+
+        local mapMake = "MapName"
+        local numboMap = "1"
+
+        local destro1 = "ServerName"
+        local destroy1 = "DESTROYED"
+
+        local String1 = "DefaultRank"
+        local Number2 = 3
+
+        local stringo = "DefaultTeamEnabled"
+        local stringo1 = true
+
+        local ohString1 = "SkyboxTheme"
+        local r = 1
+        local ohString2 = "GrassTheme"
+        local rw = 1
+
+        game:GetService("ReplicatedStorage").ActivateBeacon:InvokeServer()
+
+        local function chaosEnsue()
+            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(ohString1, r)
+            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(String1, Number2)
+            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(ohString2, rw)
+            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(stringo, stringo1, true)
+            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(otherIssue, skillIssue)
+            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(destro1, destroy1)
+            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(mapMake, numboMap)
+        end
+
+        task.spawn(function()
+            while true do
+                chaosEnsue()
+                stringo1 = false
+                rw = rw % 17 + 1
+                r = r % 16 + 1
+                numboMap = numboMap % 6 + 1
+                task.wait(0.1) -- Pequeña espera para evitar bloqueos
+            end
+        end)
+    end
+})
