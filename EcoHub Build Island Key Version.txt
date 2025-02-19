@@ -1,7 +1,7 @@
 -- Carga la librería de UI (Rayfield en este caso)
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Crear la ventana de UI con sistema de key habilitado
+-- Crear la ventana de UI sin sistema de Key
 local Window = Rayfield:CreateWindow({
     Name = "Eco Hub",
     LoadingTitle = "Cargando...",
@@ -15,24 +15,13 @@ local Window = Rayfield:CreateWindow({
         Enabled = false,
         Invite = "",
         RememberJoins = true
-    },
-    KeySystem = true, -- Activado el sistema de key
-    KeySettings = {
-        Title = "Ingrese la clave",
-        Subtitle = "Clave necesaria para acceder",
-        Note = "Ingrese la clave que se le proporcionó",
-        SaveKey = true,
-        Key = "ecohub" -- Clave establecida en "ecohub"
     }
+    -- KeySystem = false -- Eliminado
 })
 
--- Crear pestañas
+-- Crear la pestaña Main
 local MainTab = Window:CreateTab("Main", 4483362458)
-local AvatarTab = Window:CreateTab("Avatar", 7072706623) -- Nueva pestaña "Avatar"
-
--- Crear secciones
 local MainSection = MainTab:CreateSection("Interactable")
-local AvatarSection = AvatarTab:CreateSection("Character Settings") -- Sección en Avatar
 
 -- Botón para recoger herramientas
 MainTab:CreateButton({
@@ -121,77 +110,8 @@ MainTab:CreateButton({
     end
 })
 
--- TextBox para ingresar WalkSpeed
-local WalkSpeedValue = 16 -- Valor por defecto
-
-AvatarTab:CreateInput({
-    Name = "Set WalkSpeed",
-    PlaceholderText = "Introduce la velocidad",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(value)
-        local speed = tonumber(value)
-        if speed and speed > 0 then
-            WalkSpeedValue = speed
-        else
-            warn("Valor no válido. Introduce un número mayor a 0.")
-        end
-    end
-})
-
--- Botón para aplicar WalkSpeed
-AvatarTab:CreateButton({
-    Name = "Apply WalkSpeed",
-    Callback = function()
-        local player = game.Players.LocalPlayer
-        local character = player.Character or player.CharacterAdded:Wait()
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-
-        if humanoid then
-            humanoid.WalkSpeed = WalkSpeedValue
-            print("Velocidad de caminata establecida en: " .. WalkSpeedValue)
-        else
-            warn("No se encontró el Humanoid en el Character.")
-        end
-    end
-})
-
--- Botón para activar vuelo con la tecla "X"
-AvatarTab:CreateButton({
-    Name = "X to Fly",
-    Callback = function()
-        local flying = false
-        local player = game.Players.LocalPlayer
-        local character = player.Character or player.CharacterAdded:Wait()
-        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-
-        if not humanoidRootPart then
-            warn("No se encontró HumanoidRootPart")
-            return
-        end
-
-        local UIS = game:GetService("UserInputService")
-
-        UIS.InputBegan:Connect(function(input, processed)
-            if processed then return end
-            if input.KeyCode == Enum.KeyCode.X then
-                flying = not flying
-                if flying then
-                    print("Vuelo activado")
-                    while flying do
-                        humanoidRootPart.Velocity = Vector3.new(0, 50, 0) -- Eleva al jugador
-                        wait(0.1)
-                    end
-                else
-                    print("Vuelo desactivado")
-                end
-            end
-        end)
-    end
-})
-
 -----------------------------------------------------
 -- Teleport Tab
-
 local TeleportsTab = Window:CreateTab("🏃‍♂️Teleports", nil)
 local Section = TeleportsTab:CreateSection("Places", true)
 
@@ -265,12 +185,8 @@ TeleportsTab:CreateButton({
 })
 
 -----------------------------------------------------
--- Nueva pestaña Rank 4+ añadida al hub original
-
-local RankTab = Window:CreateTab("Rank 4+", nil)
-local RankSection = RankTab:CreateSection("Rank 4+")
-
-RankTab:CreateButton({
+-- Se ha movido el botón "REVOLUTION!" a la pestaña Main
+MainTab:CreateButton({
     Name = "REVOLUTION!",
     Callback = function()
         local otherIssue = "DefaultTeam"
