@@ -1,235 +1,363 @@
--- Carga la librería de UI (Rayfield en este caso)
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+--[[ 
+Eco Hub - UI Personalizada con funcionalidad draggable, tool para Purple Hollow y persistencia tras la muerte
+Este script crea una interfaz desde cero (sin templates externos) que contiene todas las funciones originales:
+• Get All Tools
+• Purple Hollow (al pulsarlo, se añade una tool que al activarse ejecuta el código)
+• Drop Cash X100 (Wallet in hand)
+• Equip All Tools
+• Tp to main menu
+• REVOLUTION!
+• Teleports: Portal, Statue, Nuke, GrassMap y Teleport Back
 
--- Crear la ventana de UI sin sistema de Key
-local Window = Rayfield:CreateWindow({
-    Name = "Eco Hub",
-    LoadingTitle = "Cargando...",
-    LoadingSubtitle = "Por favor espera",
-    ConfigurationSaving = {
-        Enabled = false,
-        FolderName = nil,
-        FileName = "EcoHubConfig"
-    },
-    Discord = {
-        Enabled = false,
-        Invite = "",
-        RememberJoins = true
-    }
-    -- KeySystem = false -- Eliminado
-})
+La UI se mantendrá tras respawn del personaje.
+Coloca este script en StarterPlayer → StarterPlayerScripts.
+]]--
 
--- Crear la pestaña Main
-local MainTab = Window:CreateTab("Main", 4483362458)
-local MainSection = MainTab:CreateSection("Interactable")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Botón para recoger herramientas
-MainTab:CreateButton({
-    Name = "Get All Tools",
-    Callback = function()
-        loadstring([[ 
-            local player = game.Players.LocalPlayer
-            local character = player.Character or player.CharacterAdded:Wait()
-            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-            local backpack = player:FindFirstChild("Backpack")
-            
-            if not humanoidRootPart or not backpack then
-                warn("Error: No se encontró el HumanoidRootPart o el Backpack.")
-                return
-            end
-            
-            local posOriginal = humanoidRootPart.CFrame
-            local itemsRecolectados = 0
-            
-            local function recogerItems()
-                for _, objeto in pairs(game.Workspace:GetDescendants()) do
-                    if objeto.Name == "SwordGiver" or objeto.Name == "GearGiver" or objeto.Name == "Giver" then
-                        if objeto.Parent:FindFirstChildOfClass("Part") then
-                            humanoidRootPart.CFrame = objeto.Parent:FindFirstChildOfClass("Part").CFrame + Vector3.new(0,1,0)
-                            wait(0.1)
-                            itemsRecolectados = itemsRecolectados + 1
-                        end
-                    end
+-- Crear ScreenGui personalizada y evitar que se reinicie al respawn
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "EcoHubUI"
+ScreenGui.ResetOnSpawn = false  -- Evita que la UI se elimine al morir
+ScreenGui.Parent = PlayerGui
+
+-- Contenedor principal (UI draggable)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 400, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+MainFrame.Active = true      -- Habilita la interacción
+MainFrame.Draggable = true   -- Permite arrastrar la UI
+
+-- Título
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Size = UDim2.new(1, 0, 0, 50)
+TitleLabel.Position = UDim2.new(0, 0, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "Eco Hub"
+TitleLabel.TextColor3 = Color3.new(1, 1, 1)
+TitleLabel.TextScaled = true
+TitleLabel.Parent = MainFrame
+
+-- Marco para los botones de pestañas
+local TabFrame = Instance.new("Frame")
+TabFrame.Name = "TabFrame"
+TabFrame.Size = UDim2.new(1, 0, 0, 40)
+TabFrame.Position = UDim2.new(0, 0, 0, 50)
+TabFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+TabFrame.BorderSizePixel = 0
+TabFrame.Parent = MainFrame
+
+-- Botón de pestaña: Main
+local MainTabButton = Instance.new("TextButton")
+MainTabButton.Name = "MainTabButton"
+MainTabButton.Size = UDim2.new(0.5, 0, 1, 0)
+MainTabButton.Position = UDim2.new(0, 0, 0, 0)
+MainTabButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+MainTabButton.Text = "Main"
+MainTabButton.TextColor3 = Color3.new(1,1,1)
+MainTabButton.TextScaled = true
+MainTabButton.Parent = TabFrame
+
+-- Botón de pestaña: Teleports
+local TeleportsTabButton = Instance.new("TextButton")
+TeleportsTabButton.Name = "TeleportsTabButton"
+TeleportsTabButton.Size = UDim2.new(0.5, 0, 1, 0)
+TeleportsTabButton.Position = UDim2.new(0.5, 0, 0, 0)
+TeleportsTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+TeleportsTabButton.Text = "Teleports"
+TeleportsTabButton.TextColor3 = Color3.new(1,1,1)
+TeleportsTabButton.TextScaled = true
+TeleportsTabButton.Parent = TabFrame
+
+-- Frame para el contenido de la pestaña Main
+local MainContent = Instance.new("Frame")
+MainContent.Name = "MainContent"
+MainContent.Size = UDim2.new(1, -20, 1, -110)
+MainContent.Position = UDim2.new(0, 10, 0, 100)
+MainContent.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MainContent.BorderSizePixel = 0
+MainContent.Parent = MainFrame
+
+-- Frame para el contenido de la pestaña Teleports
+local TeleportsContent = Instance.new("Frame")
+TeleportsContent.Name = "TeleportsContent"
+TeleportsContent.Size = UDim2.new(1, -20, 1, -110)
+TeleportsContent.Position = UDim2.new(0, 10, 0, 100)
+TeleportsContent.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TeleportsContent.BorderSizePixel = 0
+TeleportsContent.Parent = MainFrame
+TeleportsContent.Visible = false
+
+-- Layout para organizar los botones
+local MainLayout = Instance.new("UIListLayout")
+MainLayout.Parent = MainContent
+MainLayout.SortOrder = Enum.SortOrder.LayoutOrder
+MainLayout.Padding = UDim.new(0, 5)
+
+local TeleportsLayout = Instance.new("UIListLayout")
+TeleportsLayout.Parent = TeleportsContent
+TeleportsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TeleportsLayout.Padding = UDim.new(0, 5)
+
+-- Función auxiliar para crear botones
+local function createButton(parent, text)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    btn.Text = text
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.TextScaled = true
+    btn.Parent = parent
+    return btn
+end
+
+-- =====================================================
+-- Funciones de las acciones (Main Tab)
+-- =====================================================
+
+local function getAllTools()
+    local player = LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local backpack = player:FindFirstChild("Backpack")
+    
+    if not humanoidRootPart or not backpack then
+        warn("Error: No se encontró el HumanoidRootPart o el Backpack.")
+        return
+    end
+    
+    local posOriginal = humanoidRootPart.CFrame
+    local itemsRecolectados = 0
+    
+    local function recogerItems()
+        for _, objeto in pairs(Workspace:GetDescendants()) do
+            if objeto.Name == "SwordGiver" or objeto.Name == "GearGiver" or objeto.Name == "Giver" then
+                if objeto.Parent:FindFirstChildOfClass("Part") then
+                    humanoidRootPart.CFrame = objeto.Parent:FindFirstChildOfClass("Part").CFrame + Vector3.new(0, 1, 0)
+                    wait(0.1)
+                    itemsRecolectados = itemsRecolectados + 1
                 end
             end
-            
-            recogerItems()
-            
-            humanoidRootPart.CFrame = posOriginal
-            print("Proceso completado. Ítems recogidos: " .. itemsRecolectados)
-        ]])()
-    end
-})
-
--- Botón para Purple Hollow (Progears Imported)
-MainTab:CreateButton({
-    Name = "Purple Hollow (Progears Imported)",
-    Callback = function()
-        local args = {
-            [1] = 16,
-            [2] = 50
-        }
-        game:GetService("ReplicatedStorage").Purple:FireServer(unpack(args))
-    end
-})
-
--- Botón para Drop Cash X100
-MainTab:CreateButton({
-    Name = "Drop Cash X100 (Wallet in hand)",
-    Callback = function()
-        for i = 1, 100 do
-            local args = {
-                [1] = 1
-            }
-            game:GetService("ReplicatedStorage").WalletRemotes.DropCash:FireServer(unpack(args))
-            wait(0.1)
         end
     end
-})
+    
+    recogerItems()
+    humanoidRootPart.CFrame = posOriginal
+    print("Proceso completado. Ítems recogidos: " .. itemsRecolectados)
+end
 
--- Botón para equipar todas las herramientas
-MainTab:CreateButton({
-    Name = "Equip All Tools",
-    Callback = function()
-        local player = game.Players.LocalPlayer
-        local backpack = player:FindFirstChild("Backpack")
-        local character = player.Character or player.CharacterAdded:Wait()
-
-        if not backpack or not character then
-            warn("Error: No se encontró el Backpack o el Character.")
-            return
-        end
-
-        for _, tool in pairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") then
-                tool.Parent = character
-            end
-        end
-
-        print("Todas las herramientas han sido equipadas.")
+-- Función modificada para Purple Hollow: se entrega una tool que al activarse ejecuta el código
+local function purpleHollow()
+    local player = LocalPlayer
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return end
+    
+    if backpack:FindFirstChild("Purple Hollow") then
+        print("La tool 'Purple Hollow' ya existe en tu Backpack.")
+        return
     end
-})
+    
+    local tool = Instance.new("Tool")
+    tool.Name = "Purple Hollow"
+    tool.RequiresHandle = false
+    tool.CanBeDropped = false
+    tool.Parent = backpack
 
------------------------------------------------------
--- Teleport Tab
-local TeleportsTab = Window:CreateTab("🏃‍♂️Teleports", nil)
-local Section = TeleportsTab:CreateSection("Places", true)
+    tool.Activated:Connect(function()
+         local args = {16, 50}
+         ReplicatedStorage.Purple:FireServer(unpack(args))
+         print("Purple Hollow ejecutado!")
+         tool:Destroy()
+    end)
+    
+    print("Tool 'Purple Hollow' añadida a tu Backpack. Actívala para ejecutar Purple Hollow.")
+end
+
+local function dropCashX100()
+    for i = 1, 100 do
+        local args = {1}
+        ReplicatedStorage.WalletRemotes.DropCash:FireServer(unpack(args))
+        wait(0.1)
+    end
+end
+
+local function equipAllTools()
+    local player = LocalPlayer
+    local backpack = player:FindFirstChild("Backpack")
+    local character = player.Character or player.CharacterAdded:Wait()
+    if not backpack or not character then
+        warn("Error: No se encontró el Backpack o el Character.")
+        return
+    end
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            tool.Parent = character
+        end
+    end
+    print("Todas las herramientas han sido equipadas.")
+end
+
+local function tpToMainMenu()
+    local cam = Workspace.CurrentCamera
+    local blurEffect = cam:FindFirstChildOfClass("BlurEffect")
+    if blurEffect then
+        blurEffect:Destroy()
+    end
+    local part = Instance.new("Part")
+    part.Name = "the part"
+    part.Size = Vector3.new(99, 1, 99)
+    part.Anchored = true
+    part.Transparency = 0.9
+    part.CFrame = cam.CFrame * CFrame.new(0, -3, -3)
+    part.Parent = Workspace
+    local player = LocalPlayer
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        player.Character.HumanoidRootPart.CFrame = part.CFrame + Vector3.new(0, 4, 0)
+    end
+end
+
+local function revolution()
+    local otherIssue = "DefaultTeam"
+    local skillIssue = "maroon"
+    local mapMake = "MapName"
+    local numboMap = "1"
+    local destro1 = "ServerName"
+    local destroy1 = "DESTROYED"
+    local String1 = "DefaultRank"
+    local Number2 = 3
+    local stringo = "DefaultTeamEnabled"
+    local stringo1 = true
+    local ohString1 = "SkyboxTheme"
+    local r = 1
+    local ohString2 = "GrassTheme"
+    local rw = 1
+
+    ReplicatedStorage.ActivateBeacon:InvokeServer()
+
+    local function chaosEnsue()
+        ReplicatedStorage.SetServerSetting:InvokeServer(ohString1, r)
+        ReplicatedStorage.SetServerSetting:InvokeServer(String1, Number2)
+        ReplicatedStorage.SetServerSetting:InvokeServer(ohString2, rw)
+        ReplicatedStorage.SetServerSetting:InvokeServer(stringo, stringo1, true)
+        ReplicatedStorage.SetServerSetting:InvokeServer(otherIssue, skillIssue)
+        ReplicatedStorage.SetServerSetting:InvokeServer(destro1, destroy1)
+        ReplicatedStorage.SetServerSetting:InvokeServer(mapMake, numboMap)
+    end
+
+    task.spawn(function()
+        while true do
+            chaosEnsue()
+            stringo1 = false
+            rw = rw % 17 + 1
+            r = r % 16 + 1
+            numboMap = tostring((tonumber(numboMap) % 6) + 1)
+            task.wait(0.1)
+        end
+    end)
+end
+
+-- =====================================================
+-- Funciones para Teleports
+-- =====================================================
 
 local lastPosition = nil
 
 local function savePosition()
-    local Player = game.Players.LocalPlayer
-    if Player and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-        lastPosition = Player.Character.HumanoidRootPart.CFrame
+    local player = LocalPlayer
+    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        lastPosition = player.Character.HumanoidRootPart.CFrame
     end
 end
 
 local function teleportTo(position)
-    local Player = game.Players.LocalPlayer
-    if Player and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+    local player = LocalPlayer
+    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         savePosition()
-        Player.Character.HumanoidRootPart.CFrame = CFrame.new(position)
+        player.Character.HumanoidRootPart.CFrame = CFrame.new(position)
     end
 end
 
-TeleportsTab:CreateButton({
-   Name = "Teleport to Portal",
-   Info = "Teleports you to the portal.",
-   Interact = 'UnChangable',
-   Callback = function()
-        teleportTo(Vector3.new(-292, 48, 200))
-   end,
-})
-
-TeleportsTab:CreateButton({
-   Name = "Teleport to Statue",
-   Info = "Teleports you to the statue.",
-   Interact = 'UnChangable',
-   Callback = function()
-        teleportTo(Vector3.new(-212, 48, 428))
-   end,
-})
-
-TeleportsTab:CreateButton({
-   Name = "Teleport to Nuke",
-   Info = "Teleports you to the nuke.",
-   Interact = 'UnChangable',
-   Callback = function()
-        teleportTo(Vector3.new(56, 48, 196))
-   end,
-})
-
-TeleportsTab:CreateButton({
-   Name = "Teleport to GrassMap",
-   Info = "Teleports you to the GrassMap.",
-   Interact = 'UnChangable',
-   Callback = function()
-        teleportTo(Vector3.new(-128, 48, 188))
-   end,
-})
-
-local BackSection = TeleportsTab:CreateSection("Return", true)
-
-TeleportsTab:CreateButton({
-   Name = "Teleport Back",
-   Info = "Returns you to your last saved location.",
-   Interact = 'UnChangable',
-   Callback = function()
-        if lastPosition then
-            local Player = game.Players.LocalPlayer
-            if Player and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-                Player.Character.HumanoidRootPart.CFrame = lastPosition
-            end
+local function teleportBack()
+    if lastPosition then
+        local player = LocalPlayer
+        if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            player.Character.HumanoidRootPart.CFrame = lastPosition
         end
-   end,
-})
-
------------------------------------------------------
--- Se ha movido el botón "REVOLUTION!" a la pestaña Main
-MainTab:CreateButton({
-    Name = "REVOLUTION!",
-    Callback = function()
-        local otherIssue = "DefaultTeam"
-        local skillIssue = "maroon"
-
-        local mapMake = "MapName"
-        local numboMap = "1"
-
-        local destro1 = "ServerName"
-        local destroy1 = "DESTROYED"
-
-        local String1 = "DefaultRank"
-        local Number2 = 3
-
-        local stringo = "DefaultTeamEnabled"
-        local stringo1 = true
-
-        local ohString1 = "SkyboxTheme"
-        local r = 1
-        local ohString2 = "GrassTheme"
-        local rw = 1
-
-        game:GetService("ReplicatedStorage").ActivateBeacon:InvokeServer()
-
-        local function chaosEnsue()
-            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(ohString1, r)
-            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(String1, Number2)
-            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(ohString2, rw)
-            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(stringo, stringo1, true)
-            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(otherIssue, skillIssue)
-            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(destro1, destroy1)
-            game:GetService("ReplicatedStorage").SetServerSetting:InvokeServer(mapMake, numboMap)
-        end
-
-        task.spawn(function()
-            while true do
-                chaosEnsue()
-                stringo1 = false
-                rw = rw % 17 + 1
-                r = r % 16 + 1
-                numboMap = numboMap % 6 + 1
-                task.wait(0.1) -- Pequeña espera para evitar bloqueos
-            end
-        end)
     end
-})
+end
+
+-- =====================================================
+-- Creación de botones en la pestaña Main
+-- =====================================================
+
+local btnGetAllTools = createButton(MainContent, "Get All Tools")
+btnGetAllTools.MouseButton1Click:Connect(getAllTools)
+
+local btnPurpleHollow = createButton(MainContent, "Purple Hollow (Progears Imported)")
+btnPurpleHollow.MouseButton1Click:Connect(purpleHollow)
+
+local btnDropCash = createButton(MainContent, "Drop Cash X100 (Wallet in hand)")
+btnDropCash.MouseButton1Click:Connect(dropCashX100)
+
+local btnEquipAllTools = createButton(MainContent, "Equip All Tools")
+btnEquipAllTools.MouseButton1Click:Connect(equipAllTools)
+
+local btnTpToMainMenu = createButton(MainContent, "Tp to main menu")
+btnTpToMainMenu.MouseButton1Click:Connect(tpToMainMenu)
+
+local btnRevolution = createButton(MainContent, "REVOLUTION!")
+btnRevolution.MouseButton1Click:Connect(revolution)
+
+-- =====================================================
+-- Creación de botones en la pestaña Teleports
+-- =====================================================
+
+local btnTpPortal = createButton(TeleportsContent, "Teleport to Portal")
+btnTpPortal.MouseButton1Click:Connect(function()
+    teleportTo(Vector3.new(-292, 48, 200))
+end)
+
+local btnTpStatue = createButton(TeleportsContent, "Teleport to Statue")
+btnTpStatue.MouseButton1Click:Connect(function()
+    teleportTo(Vector3.new(-212, 48, 428))
+end)
+
+local btnTpNuke = createButton(TeleportsContent, "Teleport to Nuke")
+btnTpNuke.MouseButton1Click:Connect(function()
+    teleportTo(Vector3.new(56, 48, 196))
+end)
+
+local btnTpGrassMap = createButton(TeleportsContent, "Teleport to GrassMap")
+btnTpGrassMap.MouseButton1Click:Connect(function()
+    teleportTo(Vector3.new(-128, 48, 188))
+end)
+
+local btnTpBack = createButton(TeleportsContent, "Teleport Back")
+btnTpBack.MouseButton1Click:Connect(teleportBack)
+
+-- =====================================================
+-- Funcionalidad de cambio de pestañas
+-- =====================================================
+
+MainTabButton.MouseButton1Click:Connect(function()
+    MainContent.Visible = true
+    TeleportsContent.Visible = false
+    MainTabButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    TeleportsTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+end)
+
+TeleportsTabButton.MouseButton1Click:Connect(function()
+    MainContent.Visible = false
+    TeleportsContent.Visible = true
+    TeleportsTabButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    MainTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+end)
