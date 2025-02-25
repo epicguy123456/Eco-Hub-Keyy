@@ -1,17 +1,19 @@
 --[[ 
-Eco Hub - UI Profesional Mejorada (Ajustada)
-• Logo de EcoHub reducido (80x80)
-• Elementos (título, pestañas y contenido) ubicados más arriba
+Eco Hub - UI Profesional Mejorada (Ajustada con Chat Spy)
+• Logo reducido (80x80) y elementos ubicados más arriba
 • Tres pestañas: Main, Teleports y Visual
-• Botón FullBright en la pestaña Visual (ejecuta el código provisto)
+• En Visual se incluyen dos botones: FullBright y Chat Spy
+• Chat Spy: revela mensajes ocultos en el chat (usa el script provisto)
 • Mensaje que sigue al cursor ("Enjoy this script!") cuando éste está fuera de la UI
-• Botón de Discord en la pestaña Main (efecto arcoíris, copia el enlace al hacer clic)
+• Botón de Discord en la pestaña Main (efecto arcoíris, copia enlace)
 • Persistencia tras la muerte (ResetOnSpawn = false) y UI draggable
 • Funciones: Get All Tools, Purple Hollow (tool), Drop Cash, Equip All Tools, Tp to main menu, REVOLUTION, Teleports, etc.
 Coloca este script en StarterPlayer → StarterPlayerScripts.
 ]]--
 
--- Servicios y variables principales
+---------------------------
+-- Servicios y variables
+---------------------------
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -21,9 +23,9 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
------------------------------------------------------------------------
+---------------------------
 -- Función FullBright (Visual Tab)
------------------------------------------------------------------------
+---------------------------
 local function toggleFullBright()
     if not _G.FullBrightExecuted then
         _G.FullBrightEnabled = false
@@ -118,17 +120,82 @@ local function toggleFullBright()
     _G.FullBrightEnabled = not _G.FullBrightEnabled
 end
 
------------------------------------------------------------------------
--- CREACIÓN DE LA UI
------------------------------------------------------------------------
+---------------------------
+-- Función Chat Spy (Visual Tab)
+---------------------------
+local function chatSpy()
+    --[[
+    	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+    ]]
+    enabled = true -- chat "/spy" to toggle!
+    spyOnMyself = true -- if true will check your messages too
+    public = false -- if true will chat the logs publicly (fun, risky)
+    publicItalics = true -- if true will use /me to stand out
+    privateProperties = { -- customize private logs
+        Color = Color3.fromRGB(0,255,255);
+        Font = Enum.Font.SourceSansBold;
+        TextSize = 18;
+    }
+    
+    local StarterGui = game:GetService("StarterGui")
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() or Players.LocalPlayer
+    local saymsg = game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest")
+    local getmsg = game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("OnMessageDoneFiltering")
+    local instance = (_G.chatSpyInstance or 0) + 1
+    _G.chatSpyInstance = instance
+    
+    local function onChatted(p, msg)
+        if _G.chatSpyInstance == instance then
+            if p == player and msg:lower():sub(1,4) == "/spy" then
+                enabled = not enabled
+                wait(0.3)
+                privateProperties.Text = "{SPY " .. (enabled and "EN" or "DIS") .. "ABLED}"
+                StarterGui:SetCore("ChatMakeSystemMessage", privateProperties)
+            elseif enabled and (spyOnMyself == true or p ~= player) then
+                msg = msg:gsub("[\n\r]",''):gsub("\t",' '):gsub("[ ]+",' ')
+                local hidden = true
+                local conn = getmsg.OnClientEvent:Connect(function(packet, channel)
+                    if packet.SpeakerUserId == p.UserId and packet.Message == msg:sub(#msg - #packet.Message + 1) and (channel == "All" or (channel == "Team" and public == false and Players[packet.FromSpeaker].Team == player.Team)) then
+                        hidden = false
+                    end
+                end)
+                wait(1)
+                conn:Disconnect()
+                if hidden and enabled then
+                    if public then
+                        saymsg:FireServer((publicItalics and "/me " or '').."{SPY} [".. p.Name .."]: " .. msg, "All")
+                    else
+                        privateProperties.Text = "{SPY} [".. p.Name .."]: " .. msg
+                        StarterGui:SetCore("ChatMakeSystemMessage", privateProperties)
+                    end
+                end
+            end
+        end
+    end
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        p.Chatted:Connect(function(msg) onChatted(p, msg) end)
+    end
+    Players.PlayerAdded:Connect(function(p)
+        p.Chatted:Connect(function(msg) onChatted(p, msg) end)
+    end)
+    privateProperties.Text = "{SPY " .. (enabled and "EN" or "DIS") .. "ABLED}"
+    StarterGui:SetCore("ChatMakeSystemMessage", privateProperties)
+    if not player.PlayerGui:FindFirstChild("Chat") then wait(3) end
+    local chatFrame = player.PlayerGui.Chat.Frame
+    chatFrame.ChatChannelParentFrame.Visible = true
+    chatFrame.ChatBarParentFrame.Position = chatFrame.ChatChannelParentFrame.Position + UDim2.new(UDim.new(), chatFrame.ChatChannelParentFrame.Size.Y)
+end
 
--- ScreenGui que no se elimina al respawn
+---------------------------
+-- CREACIÓN DE LA UI
+---------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "EcoHubUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
--- Frame principal, con esquinas redondeadas y gradiente
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 420, 0, 540)
@@ -151,16 +218,16 @@ MainFrameGradient.Color = ColorSequence.new({
 MainFrameGradient.Rotation = 90
 MainFrameGradient.Parent = MainFrame
 
--- Logotipo (ImageLabel) con tamaño reducido
+-- Logo reducido
 local Logo = Instance.new("ImageLabel")
 Logo.Name = "Logo"
-Logo.Size = UDim2.new(0, 80, 0, 80)  -- Tamaño reducido
+Logo.Size = UDim2.new(0, 80, 0, 80)
 Logo.Position = UDim2.new(0, 15, 0, 10)
 Logo.BackgroundTransparency = 1
 Logo.Image = "rbxassetid://100155304367901"
 Logo.Parent = MainFrame
 
--- Título (ajustado para el logo más pequeño)
+-- Título ajustado
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Name = "TitleLabel"
 TitleLabel.Size = UDim2.new(1, -110, 0, 40)
@@ -172,13 +239,13 @@ TitleLabel.TextScaled = true
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Parent = MainFrame
 
------------------------------------------------------------------------
--- Pestañas (Main, Teleports, Visual)
------------------------------------------------------------------------
+---------------------------
+-- Pestañas: Main, Teleports, Visual
+---------------------------
 local TabFrame = Instance.new("Frame")
 TabFrame.Name = "TabFrame"
 TabFrame.Size = UDim2.new(1, -20, 0, 40)
-TabFrame.Position = UDim2.new(0, 10, 0, 100)  -- Posición más arriba
+TabFrame.Position = UDim2.new(0, 10, 0, 100) -- más arriba
 TabFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 TabFrame.BorderSizePixel = 0
 TabFrame.Parent = MainFrame
@@ -215,13 +282,13 @@ local MainTabButton = createTabButton("MainTabButton", "Main")
 local TeleportsTabButton = createTabButton("TeleportsTabButton", "Teleports")
 local VisualTabButton = createTabButton("VisualTabButton", "Visual")
 
------------------------------------------------------------------------
+---------------------------
 -- Contenido de cada pestaña
------------------------------------------------------------------------
+---------------------------
 local function createContentFrame()
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -20, 1, -220)
-    frame.Position = UDim2.new(0, 10, 0, 160)  -- Posición más arriba
+    frame.Position = UDim2.new(0, 10, 0, 160) -- más arriba
     frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     frame.BorderSizePixel = 0
     frame.Parent = MainFrame
@@ -254,9 +321,9 @@ VisualLayout.Parent = VisualContent
 VisualLayout.SortOrder = Enum.SortOrder.LayoutOrder
 VisualLayout.Padding = UDim.new(0, 5)
 
------------------------------------------------------------------------
+---------------------------
 -- Función auxiliar para crear botones
------------------------------------------------------------------------
+---------------------------
 local function createButton(parent, text)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -10, 0, 40)
@@ -274,9 +341,9 @@ local function createButton(parent, text)
     return btn
 end
 
------------------------------------------------------------------------
--- FUNCIONES DE LA PESTAÑA MAIN
------------------------------------------------------------------------
+---------------------------
+-- Funciones de la pestaña Main
+---------------------------
 local function getAllTools()
     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
@@ -414,9 +481,9 @@ local function revolution()
     end)
 end
 
------------------------------------------------------------------------
--- FUNCIONES DE TELEPORT
------------------------------------------------------------------------
+---------------------------
+-- Funciones de Teleport
+---------------------------
 local lastPosition = nil
 
 local function savePosition()
@@ -443,9 +510,9 @@ local function teleportBack()
     end
 end
 
------------------------------------------------------------------------
--- BOTONES EN LA PESTAÑA MAIN
------------------------------------------------------------------------
+---------------------------
+-- Botones en la pestaña Main
+---------------------------
 local btnGetAllTools = createButton(MainContent, "Get All Tools")
 btnGetAllTools.MouseButton1Click:Connect(getAllTools)
 
@@ -464,9 +531,9 @@ btnTpToMainMenu.MouseButton1Click:Connect(tpToMainMenu)
 local btnRevolution = createButton(MainContent, "REVOLUTION!")
 btnRevolution.MouseButton1Click:Connect(revolution)
 
------------------------------------------------------------------------
--- BOTONES EN LA PESTAÑA TELEPORTS
------------------------------------------------------------------------
+---------------------------
+-- Botones en la pestaña Teleports
+---------------------------
 local btnTpPortal = createButton(TeleportsContent, "Teleport to Portal")
 btnTpPortal.MouseButton1Click:Connect(function()
     teleportTo(Vector3.new(-292, 48, 200))
@@ -490,17 +557,22 @@ end)
 local btnTpBack = createButton(TeleportsContent, "Teleport Back")
 btnTpBack.MouseButton1Click:Connect(teleportBack)
 
------------------------------------------------------------------------
--- BOTÓN EN LA PESTAÑA VISUAL (FullBright)
------------------------------------------------------------------------
+---------------------------
+-- Botones en la pestaña Visual
+---------------------------
 local btnFullBright = createButton(VisualContent, "FullBright")
 btnFullBright.MouseButton1Click:Connect(function()
     toggleFullBright()
 end)
 
------------------------------------------------------------------------
--- CAMBIO DE PESTAÑAS
------------------------------------------------------------------------
+local btnChatSpy = createButton(VisualContent, "Chat Spy")
+btnChatSpy.MouseButton1Click:Connect(function()
+    chatSpy()
+end)
+
+---------------------------
+-- Cambio de pestañas
+---------------------------
 MainTabButton.MouseButton1Click:Connect(function()
     MainContent.Visible = true
     TeleportsContent.Visible = false
@@ -528,9 +600,9 @@ VisualTabButton.MouseButton1Click:Connect(function()
     TeleportsTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 end)
 
------------------------------------------------------------------------
--- MENSAJE QUE SIGUE AL CURSOR (cuando éste está fuera de la UI)
------------------------------------------------------------------------
+---------------------------
+-- Mensaje que sigue al cursor (cuando éste está fuera de la UI)
+---------------------------
 local CursorMessage = Instance.new("TextLabel")
 CursorMessage.Name = "CursorMessage"
 CursorMessage.Size = UDim2.new(0, 150, 0, 30)
@@ -557,9 +629,9 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
------------------------------------------------------------------------
--- BOTÓN DE DISCORD EN LA PESTAÑA MAIN (efecto arcoíris, copia enlace)
------------------------------------------------------------------------
+---------------------------
+-- Botón de Discord en la pestaña Main (efecto arcoíris, copia enlace)
+---------------------------
 local DiscordButton = Instance.new("TextButton")
 DiscordButton.Name = "DiscordButton"
 DiscordButton.Size = UDim2.new(0, 400, 0, 40)
