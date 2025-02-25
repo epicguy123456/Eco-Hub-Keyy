@@ -1,11 +1,11 @@
 --[[ 
-Eco Hub - UI Profesional Mejorada (Ajustada con Chat Spy)
+Eco Hub - UI Profesional Mejorada con pestaña Trolling
 • Logo reducido (80x80) y elementos ubicados más arriba
-• Tres pestañas: Main, Teleports y Visual
+• Cuatro pestañas: Main, Teleports, Visual y Trolling
 • En Visual se incluyen dos botones: FullBright y Chat Spy
-• Chat Spy: revela mensajes ocultos en el chat (usa el script provisto)
+• En Trolling se incluye un botón: Press all levers/buttons (ejecuta el código de Trolling)
 • Mensaje que sigue al cursor ("Enjoy this script!") cuando éste está fuera de la UI
-• Botón de Discord en la pestaña Main (efecto arcoíris, copia enlace)
+• Botón de Discord en la pestaña Main (efecto arcoíris, copia el enlace)
 • Persistencia tras la muerte (ResetOnSpawn = false) y UI draggable
 • Funciones: Get All Tools, Purple Hollow (tool), Drop Cash, Equip All Tools, Tp to main menu, REVOLUTION, Teleports, etc.
 Coloca este script en StarterPlayer → StarterPlayerScripts.
@@ -17,6 +17,7 @@ Coloca este script en StarterPlayer → StarterPlayerScripts.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
@@ -124,9 +125,7 @@ end
 -- Función Chat Spy (Visual Tab)
 ---------------------------
 local function chatSpy()
-    --[[
-    	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
-    ]]
+    --[[ WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk! ]]
     enabled = true -- chat "/spy" to toggle!
     spyOnMyself = true -- if true will check your messages too
     public = false -- if true will chat the logs publicly (fun, risky)
@@ -138,25 +137,23 @@ local function chatSpy()
     }
     
     local StarterGui = game:GetService("StarterGui")
-    local Players = game:GetService("Players")
-    local player = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() or Players.LocalPlayer
-    local saymsg = game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest")
-    local getmsg = game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("OnMessageDoneFiltering")
+    local saymsg = ReplicatedStorage:WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest")
+    local getmsg = ReplicatedStorage:WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("OnMessageDoneFiltering")
     local instance = (_G.chatSpyInstance or 0) + 1
     _G.chatSpyInstance = instance
     
     local function onChatted(p, msg)
         if _G.chatSpyInstance == instance then
-            if p == player and msg:lower():sub(1,4) == "/spy" then
+            if p == LocalPlayer and msg:lower():sub(1,4) == "/spy" then
                 enabled = not enabled
                 wait(0.3)
                 privateProperties.Text = "{SPY " .. (enabled and "EN" or "DIS") .. "ABLED}"
                 StarterGui:SetCore("ChatMakeSystemMessage", privateProperties)
-            elseif enabled and (spyOnMyself == true or p ~= player) then
+            elseif enabled and (spyOnMyself == true or p ~= LocalPlayer) then
                 msg = msg:gsub("[\n\r]",''):gsub("\t",' '):gsub("[ ]+",' ')
                 local hidden = true
                 local conn = getmsg.OnClientEvent:Connect(function(packet, channel)
-                    if packet.SpeakerUserId == p.UserId and packet.Message == msg:sub(#msg - #packet.Message + 1) and (channel == "All" or (channel == "Team" and public == false and Players[packet.FromSpeaker].Team == player.Team)) then
+                    if packet.SpeakerUserId == p.UserId and packet.Message == msg:sub(#msg - #packet.Message + 1) and (channel == "All" or (channel == "Team" and public == false and Players[p.Name].Team == LocalPlayer.Team)) then
                         hidden = false
                     end
                 end)
@@ -164,9 +161,9 @@ local function chatSpy()
                 conn:Disconnect()
                 if hidden and enabled then
                     if public then
-                        saymsg:FireServer((publicItalics and "/me " or '').."{SPY} [".. p.Name .."]: " .. msg, "All")
+                        saymsg:FireServer((publicItalics and "/me " or '').."{SPY} [" .. p.Name .. "]: " .. msg, "All")
                     else
-                        privateProperties.Text = "{SPY} [".. p.Name .."]: " .. msg
+                        privateProperties.Text = "{SPY} [" .. p.Name .. "]: " .. msg
                         StarterGui:SetCore("ChatMakeSystemMessage", privateProperties)
                     end
                 end
@@ -182,19 +179,120 @@ local function chatSpy()
     end)
     privateProperties.Text = "{SPY " .. (enabled and "EN" or "DIS") .. "ABLED}"
     StarterGui:SetCore("ChatMakeSystemMessage", privateProperties)
-    if not player.PlayerGui:FindFirstChild("Chat") then wait(3) end
-    local chatFrame = player.PlayerGui.Chat.Frame
+    if not LocalPlayer.PlayerGui:FindFirstChild("Chat") then wait(3) end
+    local chatFrame = LocalPlayer.PlayerGui.Chat.Frame
     chatFrame.ChatChannelParentFrame.Visible = true
     chatFrame.ChatBarParentFrame.Position = chatFrame.ChatChannelParentFrame.Position + UDim2.new(UDim.new(), chatFrame.ChatChannelParentFrame.Size.Y)
 end
 
 ---------------------------
--- CREACIÓN DE LA UI
+-- Función Press All Levers/Buttons (Trolling Tab)
 ---------------------------
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "EcoHubUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = PlayerGui
+local function pressAllLevers()
+    local toggled = false
+    local debounce = false
+    local removeLimits = false -- Variable to track if the limits are removed
+
+    -- Function to scan for and fire click detectors
+    local function scanForClickDetectors()
+        while toggled do
+            for _, descendant in pairs(workspace:GetDescendants()) do
+                if descendant:IsA("ClickDetector") then
+                    if removeLimits then
+                        descendant.MaxActivationDistance = math.huge
+                    end
+                    fireclickdetector(descendant)
+                end
+            end
+            wait()
+        end
+    end
+
+    -- UI setup for Trolling (una ventana pequeña independiente)
+    local TrollingUI = Instance.new("ScreenGui")
+    TrollingUI.Name = "TrollingUI"
+    TrollingUI.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    
+    local Main = Instance.new("ImageLabel")
+    Main.Name = "Main"
+    Main.Parent = TrollingUI
+    Main.BackgroundColor3 = Color3.fromRGB(48, 48, 48)
+    Main.BackgroundTransparency = 1
+    Main.Position = UDim2.new(0.5, -75, 0.5, -37)
+    Main.Size = UDim2.new(0, 150, 0, 75)
+    Main.Image = "rbxassetid://3570695787"
+    Main.ImageColor3 = Color3.fromRGB(48, 48, 48)
+    Main.ScaleType = Enum.ScaleType.Slice
+    Main.SliceCenter = Rect.new(100, 100, 100, 100)
+    Main.SliceScale = 0.120
+    Main.Active = true
+    Main.Draggable = true
+
+    local Toggle = Instance.new("ImageLabel")
+    Toggle.Name = "Toggle"
+    Toggle.Parent = Main
+    Toggle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+    Toggle.BackgroundTransparency = 1
+    Toggle.Position = UDim2.new(0.5, -23, 0.5, -11)
+    Toggle.Size = UDim2.new(0, 46, 0, 22)
+    Toggle.Image = "rbxassetid://3570695787"
+    Toggle.ImageColor3 = Color3.fromRGB(200, 200, 200)
+    Toggle.ScaleType = Enum.ScaleType.Slice
+    Toggle.SliceCenter = Rect.new(100, 100, 100, 100)
+    Toggle.SliceScale = 0.120
+
+    local Button = Instance.new("TextButton")
+    Button.Name = "Button"
+    Button.Parent = Toggle
+    Button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Button.BackgroundTransparency = 1
+    Button.Size = UDim2.new(1, 0, 1, 0)
+    Button.Font = Enum.Font.SourceSans
+    Button.Text = "Toggle"
+    Button.TextColor3 = Color3.fromRGB(0, 0, 0)
+    Button.TextSize = 14
+    Button.TextTransparency = 1
+
+    local Circle = Instance.new("ImageLabel")
+    Circle.Name = "Circle"
+    Circle.Parent = Toggle
+    Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Circle.BackgroundTransparency = 1
+    Circle.Position = UDim2.new(0, 2, 0, 2)
+    Circle.Size = UDim2.new(0, 18, 0, 18)
+    Circle.Image = "rbxassetid://3570695787"
+    Circle.ScaleType = Enum.ScaleType.Slice
+    Circle.SliceCenter = Rect.new(100, 100, 100, 100)
+    Circle.SliceScale = 0.120
+
+    local function onButtonClick()
+        if not debounce then
+            debounce = true
+            if toggled then
+                TweenService:Create(Toggle, TweenInfo.new(0.25), {ImageColor3 = Color3.fromRGB(200, 200, 200)}):Play()
+                TweenService:Create(Circle, TweenInfo.new(0.25), {Position = UDim2.new(0,2,0,2)}):Play()
+                toggled = false
+            else
+                TweenService:Create(Toggle, TweenInfo.new(0.25), {ImageColor3 = Color3.fromRGB(64,200,114)}):Play()
+                TweenService:Create(Circle, TweenInfo.new(0.25), {Position = UDim2.new(1,-20,0,2)}):Play()
+                toggled = true
+                coroutine.wrap(scanForClickDetectors)()
+            end
+            wait(0.25)
+            debounce = false
+        end
+    end
+
+    Button.MouseButton1Click:Connect(onButtonClick)
+end
+
+---------------------------
+-- CREACIÓN DE LA UI PRINCIPAL
+---------------------------
+local ScreenGui_Main = Instance.new("ScreenGui")
+ScreenGui_Main.Name = "EcoHubUI"
+ScreenGui_Main.ResetOnSpawn = false
+ScreenGui_Main.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
@@ -204,7 +302,7 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
+MainFrame.Parent = ScreenGui_Main
 
 local MainFrameCorner = Instance.new("UICorner")
 MainFrameCorner.CornerRadius = UDim.new(0, 12)
@@ -212,8 +310,8 @@ MainFrameCorner.Parent = MainFrame
 
 local MainFrameGradient = Instance.new("UIGradient")
 MainFrameGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 50, 50))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(20,20,20)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(50,50,50))
 })
 MainFrameGradient.Rotation = 90
 MainFrameGradient.Parent = MainFrame
@@ -234,24 +332,24 @@ TitleLabel.Size = UDim2.new(1, -110, 0, 40)
 TitleLabel.Position = UDim2.new(0, 100, 0, 20)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Text = "Eco Hub"
-TitleLabel.TextColor3 = Color3.new(1, 1, 1)
+TitleLabel.TextColor3 = Color3.new(1,1,1)
 TitleLabel.TextScaled = true
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Parent = MainFrame
 
 ---------------------------
--- Pestañas: Main, Teleports, Visual
+-- Pestañas: Main, Teleports, Visual, Trolling
 ---------------------------
 local TabFrame = Instance.new("Frame")
 TabFrame.Name = "TabFrame"
 TabFrame.Size = UDim2.new(1, -20, 0, 40)
-TabFrame.Position = UDim2.new(0, 10, 0, 100) -- más arriba
-TabFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+TabFrame.Position = UDim2.new(0, 10, 0, 100) -- Más arriba
+TabFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
 TabFrame.BorderSizePixel = 0
 TabFrame.Parent = MainFrame
 
 local TabFrameCorner = Instance.new("UICorner")
-TabFrameCorner.CornerRadius = UDim.new(0, 8)
+TabFrameCorner.CornerRadius = UDim.new(0,8)
 TabFrameCorner.Parent = TabFrame
 
 local TabLayout = Instance.new("UIListLayout")
@@ -259,21 +357,21 @@ TabLayout.FillDirection = Enum.FillDirection.Horizontal
 TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 TabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabLayout.Padding = UDim.new(0, 5)
+TabLayout.Padding = UDim.new(0,5)
 TabLayout.Parent = TabFrame
 
 local function createTabButton(name, text)
     local btn = Instance.new("TextButton")
     btn.Name = name
-    btn.Size = UDim2.new(1/3, -5, 1, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.Size = UDim2.new(1/4, -5, 1, 0)  -- Ahora 4 pestañas
+    btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
     btn.Text = text
     btn.TextScaled = true
     btn.Font = Enum.Font.Gotham
     btn.TextColor3 = Color3.new(1,1,1)
     btn.Parent = TabFrame
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0,6)
     corner.Parent = btn
     return btn
 end
@@ -281,6 +379,7 @@ end
 local MainTabButton = createTabButton("MainTabButton", "Main")
 local TeleportsTabButton = createTabButton("TeleportsTabButton", "Teleports")
 local VisualTabButton = createTabButton("VisualTabButton", "Visual")
+local TrollingTabButton = createTabButton("TrollingTabButton", "Trolling")
 
 ---------------------------
 -- Contenido de cada pestaña
@@ -288,12 +387,12 @@ local VisualTabButton = createTabButton("VisualTabButton", "Visual")
 local function createContentFrame()
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -20, 1, -220)
-    frame.Position = UDim2.new(0, 10, 0, 160) -- más arriba
-    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    frame.Position = UDim2.new(0,10,0,160) -- Más arriba
+    frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
     frame.BorderSizePixel = 0
     frame.Parent = MainFrame
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(0,8)
     corner.Parent = frame
     return frame
 end
@@ -301,33 +400,40 @@ end
 local MainContent = createContentFrame()
 local TeleportsContent = createContentFrame()
 local VisualContent = createContentFrame()
+local TrollingContent = createContentFrame()
 
 MainContent.Visible = true
 TeleportsContent.Visible = false
 VisualContent.Visible = false
+TrollingContent.Visible = false
 
-local MainLayout = Instance.new("UIListLayout")
-MainLayout.Parent = MainContent
-MainLayout.SortOrder = Enum.SortOrder.LayoutOrder
-MainLayout.Padding = UDim.new(0, 5)
+local MainLayoutContent = Instance.new("UIListLayout")
+MainLayoutContent.Parent = MainContent
+MainLayoutContent.SortOrder = Enum.SortOrder.LayoutOrder
+MainLayoutContent.Padding = UDim.new(0,5)
 
 local TeleportsLayout = Instance.new("UIListLayout")
 TeleportsLayout.Parent = TeleportsContent
 TeleportsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TeleportsLayout.Padding = UDim.new(0, 5)
+TeleportsLayout.Padding = UDim.new(0,5)
 
 local VisualLayout = Instance.new("UIListLayout")
 VisualLayout.Parent = VisualContent
 VisualLayout.SortOrder = Enum.SortOrder.LayoutOrder
-VisualLayout.Padding = UDim.new(0, 5)
+VisualLayout.Padding = UDim.new(0,5)
+
+local TrollingLayout = Instance.new("UIListLayout")
+TrollingLayout.Parent = TrollingContent
+TrollingLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TrollingLayout.Padding = UDim.new(0,5)
 
 ---------------------------
--- Función auxiliar para crear botones
+-- Función auxiliar para crear botones (reutilizada)
 ---------------------------
 local function createButton(parent, text)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -10, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    btn.BackgroundColor3 = Color3.fromRGB(80,80,80)
     btn.Text = text
     btn.TextColor3 = Color3.new(1,1,1)
     btn.TextScaled = true
@@ -335,9 +441,8 @@ local function createButton(parent, text)
     btn.Parent = parent
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0,6)
     corner.Parent = btn
-    
     return btn
 end
 
@@ -348,27 +453,23 @@ local function getAllTools()
     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     local backpack = LocalPlayer:FindFirstChild("Backpack")
-    
     if not humanoidRootPart or not backpack then
         warn("Error: No se encontró el HumanoidRootPart o el Backpack.")
         return
     end
-    
     local posOriginal = humanoidRootPart.CFrame
     local itemsRecolectados = 0
-    
     local function recogerItems()
         for _, objeto in pairs(Workspace:GetDescendants()) do
             if objeto.Name == "SwordGiver" or objeto.Name == "GearGiver" or objeto.Name == "Giver" then
                 if objeto.Parent:FindFirstChildOfClass("Part") then
-                    humanoidRootPart.CFrame = objeto.Parent:FindFirstChildOfClass("Part").CFrame + Vector3.new(0, 1, 0)
+                    humanoidRootPart.CFrame = objeto.Parent:FindFirstChildOfClass("Part").CFrame + Vector3.new(0,1,0)
                     task.wait(0.1)
                     itemsRecolectados = itemsRecolectados + 1
                 end
             end
         end
     end
-    
     recogerItems()
     humanoidRootPart.CFrame = posOriginal
     print("Proceso completado. Ítems recogidos: " .. itemsRecolectados)
@@ -377,25 +478,21 @@ end
 local function purpleHollow()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not backpack then return end
-    
     if backpack:FindFirstChild("Purple Hollow") then
         print("La tool 'Purple Hollow' ya existe en tu Backpack.")
         return
     end
-    
     local tool = Instance.new("Tool")
     tool.Name = "Purple Hollow"
     tool.RequiresHandle = false
     tool.CanBeDropped = false
     tool.Parent = backpack
-
     tool.Activated:Connect(function()
          local args = {16, 50}
          ReplicatedStorage.Purple:FireServer(unpack(args))
          print("Purple Hollow ejecutado!")
          tool:Destroy()
     end)
-    
     print("Tool 'Purple Hollow' añadida a tu Backpack. Actívala para ejecutar Purple Hollow.")
 end
 
@@ -429,15 +526,14 @@ local function tpToMainMenu()
     end
     local part = Instance.new("Part")
     part.Name = "the part"
-    part.Size = Vector3.new(99, 1, 99)
+    part.Size = Vector3.new(99,1,99)
     part.Anchored = true
     part.Transparency = 0.9
-    part.CFrame = cam.CFrame * CFrame.new(0, -3, -3)
+    part.CFrame = cam.CFrame * CFrame.new(0,-3,-3)
     part.Parent = Workspace
-    
     local character = LocalPlayer.Character
     if character and character:FindFirstChild("HumanoidRootPart") then
-        character.HumanoidRootPart.CFrame = part.CFrame + Vector3.new(0, 4, 0)
+        character.HumanoidRootPart.CFrame = part.CFrame + Vector3.new(0,4,0)
     end
 end
 
@@ -456,9 +552,7 @@ local function revolution()
     local r = 1
     local ohString2 = "GrassTheme"
     local rw = 1
-
     ReplicatedStorage.ActivateBeacon:InvokeServer()
-
     local function chaosEnsue()
         ReplicatedStorage.SetServerSetting:InvokeServer(ohString1, r)
         ReplicatedStorage.SetServerSetting:InvokeServer(String1, Number2)
@@ -468,7 +562,6 @@ local function revolution()
         ReplicatedStorage.SetServerSetting:InvokeServer(destro1, destroy1)
         ReplicatedStorage.SetServerSetting:InvokeServer(mapMake, numboMap)
     end
-
     task.spawn(function()
         while true do
             chaosEnsue()
@@ -535,24 +628,16 @@ btnRevolution.MouseButton1Click:Connect(revolution)
 -- Botones en la pestaña Teleports
 ---------------------------
 local btnTpPortal = createButton(TeleportsContent, "Teleport to Portal")
-btnTpPortal.MouseButton1Click:Connect(function()
-    teleportTo(Vector3.new(-292, 48, 200))
-end)
+btnTpPortal.MouseButton1Click:Connect(function() teleportTo(Vector3.new(-292,48,200)) end)
 
 local btnTpStatue = createButton(TeleportsContent, "Teleport to Statue")
-btnTpStatue.MouseButton1Click:Connect(function()
-    teleportTo(Vector3.new(-212, 48, 428))
-end)
+btnTpStatue.MouseButton1Click:Connect(function() teleportTo(Vector3.new(-212,48,428)) end)
 
 local btnTpNuke = createButton(TeleportsContent, "Teleport to Nuke")
-btnTpNuke.MouseButton1Click:Connect(function()
-    teleportTo(Vector3.new(56, 48, 196))
-end)
+btnTpNuke.MouseButton1Click:Connect(function() teleportTo(Vector3.new(56,48,196)) end)
 
 local btnTpGrassMap = createButton(TeleportsContent, "Teleport to GrassMap")
-btnTpGrassMap.MouseButton1Click:Connect(function()
-    teleportTo(Vector3.new(-128, 48, 188))
-end)
+btnTpGrassMap.MouseButton1Click:Connect(function() teleportTo(Vector3.new(-128,48,188)) end)
 
 local btnTpBack = createButton(TeleportsContent, "Teleport Back")
 btnTpBack.MouseButton1Click:Connect(teleportBack)
@@ -561,14 +646,16 @@ btnTpBack.MouseButton1Click:Connect(teleportBack)
 -- Botones en la pestaña Visual
 ---------------------------
 local btnFullBright = createButton(VisualContent, "FullBright")
-btnFullBright.MouseButton1Click:Connect(function()
-    toggleFullBright()
-end)
+btnFullBright.MouseButton1Click:Connect(function() toggleFullBright() end)
 
 local btnChatSpy = createButton(VisualContent, "Chat Spy")
-btnChatSpy.MouseButton1Click:Connect(function()
-    chatSpy()
-end)
+btnChatSpy.MouseButton1Click:Connect(function() chatSpy() end)
+
+---------------------------
+-- Botones en la pestaña Trolling
+---------------------------
+local btnPressAll = createButton(TrollingContent, "Press all levers/buttons")
+btnPressAll.MouseButton1Click:Connect(function() pressAllLevers() end)
 
 ---------------------------
 -- Cambio de pestañas
@@ -577,27 +664,44 @@ MainTabButton.MouseButton1Click:Connect(function()
     MainContent.Visible = true
     TeleportsContent.Visible = false
     VisualContent.Visible = false
-    MainTabButton.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
-    TeleportsTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    VisualTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    TrollingContent.Visible = false
+    MainTabButton.BackgroundColor3 = Color3.fromRGB(60,120,60)
+    TeleportsTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    VisualTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    TrollingTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 end)
 
 TeleportsTabButton.MouseButton1Click:Connect(function()
     MainContent.Visible = false
     TeleportsContent.Visible = true
     VisualContent.Visible = false
-    TeleportsTabButton.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
-    MainTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    VisualTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    TrollingContent.Visible = false
+    TeleportsTabButton.BackgroundColor3 = Color3.fromRGB(60,120,60)
+    MainTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    VisualTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    TrollingTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 end)
 
 VisualTabButton.MouseButton1Click:Connect(function()
     MainContent.Visible = false
     TeleportsContent.Visible = false
     VisualContent.Visible = true
-    VisualTabButton.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
-    MainTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    TeleportsTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    TrollingContent.Visible = false
+    VisualTabButton.BackgroundColor3 = Color3.fromRGB(60,120,60)
+    MainTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    TeleportsTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    TrollingTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+end)
+
+TrollingTabButton.MouseButton1Click:Connect(function()
+    MainContent.Visible = false
+    TeleportsContent.Visible = false
+    VisualContent.Visible = false
+    TrollingContent.Visible = true
+    TrollingTabButton.BackgroundColor3 = Color3.fromRGB(60,120,60)
+    MainTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    TeleportsTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    VisualTabButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 end)
 
 ---------------------------
@@ -605,20 +709,19 @@ end)
 ---------------------------
 local CursorMessage = Instance.new("TextLabel")
 CursorMessage.Name = "CursorMessage"
-CursorMessage.Size = UDim2.new(0, 150, 0, 30)
-CursorMessage.BackgroundColor3 = Color3.new(0, 0, 0)
+CursorMessage.Size = UDim2.new(0,150,0,30)
+CursorMessage.BackgroundColor3 = Color3.new(0,0,0)
 CursorMessage.BackgroundTransparency = 0.6
 CursorMessage.Text = "Enjoy this script!"
-CursorMessage.TextColor3 = Color3.new(1, 1, 1)
+CursorMessage.TextColor3 = Color3.new(1,1,1)
 CursorMessage.TextScaled = true
 CursorMessage.Font = Enum.Font.GothamBold
-CursorMessage.Parent = ScreenGui
+CursorMessage.Parent = ScreenGui_Main
 CursorMessage.Visible = false
 
 RunService.RenderStepped:Connect(function()
     local mousePos = UserInputService:GetMouseLocation()
     CursorMessage.Position = UDim2.new(0, mousePos.X + 20, 0, mousePos.Y)
-    
     local framePos = MainFrame.AbsolutePosition
     local frameSize = MainFrame.AbsoluteSize
     if mousePos.X >= framePos.X and mousePos.X <= framePos.X + frameSize.X and
@@ -634,9 +737,9 @@ end)
 ---------------------------
 local DiscordButton = Instance.new("TextButton")
 DiscordButton.Name = "DiscordButton"
-DiscordButton.Size = UDim2.new(0, 400, 0, 40)
+DiscordButton.Size = UDim2.new(0,400,0,40)
 DiscordButton.Position = UDim2.new(0.5, -200, 1, -50)
-DiscordButton.BackgroundColor3 = Color3.new(0, 0, 0)
+DiscordButton.BackgroundColor3 = Color3.new(0,0,0)
 DiscordButton.BackgroundTransparency = 0.4
 DiscordButton.Text = "https://discord.gg/fjJjGCdP"
 DiscordButton.TextScaled = true
@@ -644,7 +747,7 @@ DiscordButton.Font = Enum.Font.GothamBold
 DiscordButton.Parent = MainFrame
 
 local DiscordButtonCorner = Instance.new("UICorner")
-DiscordButtonCorner.CornerRadius = UDim.new(0, 6)
+DiscordButtonCorner.CornerRadius = UDim.new(0,6)
 DiscordButtonCorner.Parent = DiscordButton
 
 spawn(function()
